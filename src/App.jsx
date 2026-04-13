@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { initializeApp } from "firebase/app";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, updateProfile } from "firebase/auth";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, updateProfile, sendPasswordResetEmail } from "firebase/auth";
 import { getDatabase, ref, onValue, set, get, child, remove } from "firebase/database";
 
 const firebaseConfig = {
@@ -122,6 +122,7 @@ export default function App() {
     const [fullName, setFullName] = useState("");
     const [username, setUsername] = useState("");
     const [authError, setAuthError] = useState("");
+    const [authSuccess, setAuthSuccess] = useState("");
     const [authLoading, setAuthLoading] = useState(false);
 
     const [showAddDevice, setShowAddDevice] = useState(false);
@@ -181,6 +182,19 @@ export default function App() {
             const cred = await createUserWithEmailAndPassword(auth, cleanEmail, password);
             await updateProfile(cred.user, { displayName: fullName.trim() });
             await set(ref(db, `usernames/${cleanUser}`), { email: cleanEmail, uid: cred.user.uid, name: fullName.trim() });
+        } catch (err) {
+            setAuthError(friendlyError(err));
+        } finally { setAuthLoading(false); }
+    }
+
+    async function handleForgotPassword(e) {
+        e.preventDefault();
+        setAuthError(""); setAuthSuccess(""); setAuthLoading(true);
+        try {
+            const resetEmail = email.trim().toLowerCase();
+            if (!isEmail(resetEmail)) throw { code: "", message: "Please enter a valid email address." };
+            await sendPasswordResetEmail(auth, resetEmail);
+            setAuthSuccess("Password reset email sent. Check your inbox.");
         } catch (err) {
             setAuthError(friendlyError(err));
         } finally { setAuthLoading(false); }
@@ -344,8 +358,8 @@ void loop() {
                                 <div className="mx-auto mb-5 h-16 w-16 grid place-items-center rounded-2xl bg-gradient-to-br from-cyan-500/20 to-indigo-500/20 ring-1 ring-cyan-500/15">
                                     <IconHome className="h-8 w-8 text-cyan-400" />
                                 </div>
-                                <h2 className="text-2xl font-bold tracking-tight">{authMode === "login" ? "Welcome back" : "Create your account"}</h2>
-                                <p className="mt-2 text-sm text-slate-500">{authMode === "login" ? "Sign in to access your devices" : "Set up your profile to get started"}</p>
+                                <h2 className="text-2xl font-bold tracking-tight">{authMode === "login" ? "Welcome back" : authMode === "forgot" ? "Reset Password" : "Create your account"}</h2>
+                                <p className="mt-2 text-sm text-slate-500">{authMode === "login" ? "Sign in to access your devices" : authMode === "forgot" ? "We'll send you an email to reset it" : "Set up your profile to get started"}</p>
                             </div>
 
                             <div className="rounded-3xl border border-white/[0.08] bg-white/[0.04] p-6 backdrop-blur-xl">
@@ -355,13 +369,32 @@ void loop() {
                                         <p className="text-sm text-rose-200/90 leading-relaxed">{authError}</p>
                                     </div>
                                 )}
+                                {authSuccess && (
+                                    <div className="mb-5 flex items-start gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.08] p-3.5">
+                                        <span className="text-emerald-400 text-lg leading-none mt-0.5">✓</span>
+                                        <p className="text-sm text-emerald-200/90 leading-relaxed">{authSuccess}</p>
+                                    </div>
+                                )}
 
                                 {authMode === "login" ? (
                                     <form className="space-y-4" onSubmit={handleLogin}>
                                         <InputField label="Username or Email" type="text" placeholder="e.g. sourav or you@mail.com" value={loginIdentifier} onChange={e => setLoginIdentifier(e.target.value)} required />
                                         <InputField label="Password" type="password" placeholder="Your password" value={password} onChange={e => setPassword(e.target.value)} required />
+                                        <div className="flex justify-end">
+                                            <button type="button" onClick={() => { setAuthError(""); setAuthSuccess(""); setAuthMode("forgot"); }} className="text-xs font-medium text-cyan-400 hover:text-cyan-300 transition">Forgot Password?</button>
+                                        </div>
                                         <button disabled={authLoading} className="w-full rounded-2xl bg-gradient-to-r from-cyan-400 to-indigo-500 p-3 text-sm font-bold text-slate-950 transition hover:brightness-110 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed mt-2">
                                             {authLoading ? "Signing in..." : "Sign In"}
+                                        </button>
+                                    </form>
+                                ) : authMode === "forgot" ? (
+                                    <form className="space-y-4" onSubmit={handleForgotPassword}>
+                                        <InputField label="Email" type="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} required />
+                                        <button disabled={authLoading} className="w-full rounded-2xl bg-gradient-to-r from-cyan-400 to-indigo-500 p-3 text-sm font-bold text-slate-950 transition hover:brightness-110 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed mt-2">
+                                            {authLoading ? "Sending..." : "Send Reset Link"}
+                                        </button>
+                                        <button type="button" onClick={() => { setAuthError(""); setAuthSuccess(""); setAuthMode("login"); }} className="w-full text-center text-sm font-semibold text-slate-400 hover:text-white transition mt-2">
+                                            Back to login
                                         </button>
                                     </form>
                                 ) : (
@@ -377,12 +410,14 @@ void loop() {
                                 )}
                             </div>
 
-                            <p className="mt-6 text-center text-sm text-slate-500">
-                                {authMode === "login" ? "Don't have an account? " : "Already registered? "}
-                                <button onClick={() => { setAuthError(""); setAuthMode(authMode === "login" ? "register" : "login"); }} className="font-semibold text-cyan-400 hover:text-cyan-300 transition">
-                                    {authMode === "login" ? "Register" : "Sign in"}
-                                </button>
-                            </p>
+                            {authMode !== "forgot" && (
+                                <p className="mt-6 text-center text-sm text-slate-500">
+                                    {authMode === "login" ? "Don't have an account? " : "Already registered? "}
+                                    <button onClick={() => { setAuthError(""); setAuthSuccess(""); setAuthMode(authMode === "login" ? "register" : "login"); }} className="font-semibold text-cyan-400 hover:text-cyan-300 transition">
+                                        {authMode === "login" ? "Register" : "Sign in"}
+                                    </button>
+                                </p>
+                            )}
                         </div>
                     </main>
                 ) : (
