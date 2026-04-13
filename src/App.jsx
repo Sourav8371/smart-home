@@ -82,11 +82,12 @@ function IconHome({ className = "" }) {
     );
 }
 
+const base = import.meta.env.BASE_URL;
 const DEVICE_CATALOG = {
-    fan:   { name: "Ceiling Fan",     icon: IconFan,   img: "/devices/fan.png" },
-    light: { name: "Smart Light",     icon: IconLight,  img: "/devices/light.png" },
-    ac:    { name: "Air Conditioner", icon: IconAC,    img: "/devices/ac.png" },
-    tv:    { name: "Television",      icon: IconTV,    img: "/devices/tv.png" }
+    fan:   { name: "Ceiling Fan",     icon: IconFan,   img: `${base}devices/fan.png` },
+    light: { name: "Smart Light",     icon: IconLight,  img: `${base}devices/light.png` },
+    ac:    { name: "Air Conditioner", icon: IconAC,    img: `${base}devices/ac.png` },
+    tv:    { name: "Television",      icon: IconTV,    img: `${base}devices/tv.png` }
 };
 
 function GlassCard({ children, className = "", onClick }) {
