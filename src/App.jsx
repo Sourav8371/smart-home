@@ -4,13 +4,13 @@ import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, on
 import { getDatabase, ref, onValue, set, get, child, remove } from "firebase/database";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAivKjOmV8k-SgOyL-GOTxtuuwLCjVz0jA",
-  authDomain: "smart-home-1482c.firebaseapp.com",
-  databaseURL: "https://smart-home-1482c-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "smart-home-1482c",
-  storageBucket: "smart-home-1482c.firebasestorage.app",
-  messagingSenderId: "665902949354",
-  appId: "1:665902949354:web:6995a93aff5ec452b24893"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
 const app = initializeApp(firebaseConfig);
