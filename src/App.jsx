@@ -287,7 +287,7 @@ export default function App() {
 #define DATABASE_URL "${firebaseConfig.databaseURL}"
 #define USER_UID "${viewer.uid}"
 #define DEVICE_KEY "${selectedDeviceType}_device_1"
-#define RELAY_PIN 4
+#define RELAY_PIN 14
 
 FirebaseData firebaseData;
 FirebaseAuth auth;
