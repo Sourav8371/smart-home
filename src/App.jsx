@@ -127,6 +127,7 @@ export default function App() {
 
     const [showAddDevice, setShowAddDevice] = useState(false);
     const [selectedDeviceType, setSelectedDeviceType] = useState(null);
+    const [pendingDeviceKey, setPendingDeviceKey] = useState("");
 
     useEffect(() => {
         const unsub = onAuthStateChanged(auth, (user) => {
@@ -213,12 +214,32 @@ export default function App() {
 
     async function simulateDevice(type) {
         if (!viewer) return;
-        const id = `${type}_${Date.now().toString().slice(-6)}`;
-        await set(ref(db, `users/${viewer.uid}/devices/${id}`), { type, name: DEVICE_CATALOG[type].name, state: 0 });
+        const id = `${type}_sim_${Date.now().toString().slice(-5)}`;
+        await set(ref(db, `users/${viewer.uid}/devices/${id}`), { type, name: `${DEVICE_CATALOG[type].name} (Sim)`, state: 0 });
         closeModal();
     }
 
-    function closeModal() { setShowAddDevice(false); setSelectedDeviceType(null); }
+    function startAddDevice(type) {
+        const id = `${type}_${Math.floor(1000 + Math.random() * 9000)}`;
+        setPendingDeviceKey(id);
+        setSelectedDeviceType(type);
+    }
+
+    async function pairDevice() {
+        if (!viewer || !selectedDeviceType || !pendingDeviceKey) return;
+        await set(ref(db, `users/${viewer.uid}/devices/${pendingDeviceKey}`), { 
+            type: selectedDeviceType, 
+            name: DEVICE_CATALOG[selectedDeviceType].name, 
+            state: 0 
+        });
+        closeModal();
+    }
+
+    function closeModal() { 
+        setShowAddDevice(false); 
+        setSelectedDeviceType(null); 
+        setPendingDeviceKey("");
+    }
 
     const bg = "bg-[radial-gradient(ellipse_at_top_right,rgba(56,189,248,0.15),transparent_50%),radial-gradient(ellipse_at_bottom_left,rgba(168,85,247,0.12),transparent_50%),linear-gradient(to_bottom,#030712,#0c1222)]";
 
@@ -251,7 +272,7 @@ export default function App() {
                                     {Object.entries(DEVICE_CATALOG).map(([key, cfg]) => {
                                         const Icon = cfg.icon;
                                         return (
-                                            <button key={key} onClick={() => setSelectedDeviceType(key)} className="group rounded-2xl border border-white/10 bg-white/[0.04] p-5 flex flex-col items-center gap-3 transition-all hover:bg-cyan-400/10 hover:border-cyan-400/30 hover:scale-105 active:scale-95">
+                                            <button key={key} onClick={() => startAddDevice(key)} className="group rounded-2xl border border-white/10 bg-white/[0.04] p-5 flex flex-col items-center gap-3 transition-all hover:bg-cyan-400/10 hover:border-cyan-400/30 hover:scale-105 active:scale-95">
                                                 <div className="h-14 w-14 grid place-items-center rounded-2xl bg-cyan-400/10 text-cyan-400 group-hover:bg-cyan-400/20 transition">
                                                     <Icon className="h-7 w-7" />
                                                 </div>
@@ -269,12 +290,20 @@ export default function App() {
                                 </div>
                                 <p className="text-sm text-slate-400 mb-5">Flash this code to your ESP32. It binds this device to your account.</p>
 
-                                <button
-                                    onClick={() => simulateDevice(selectedDeviceType)}
-                                    className="mb-5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:brightness-110 active:scale-95"
-                                >
-                                    Quick Simulate Instead
-                                </button>
+                                <div className="flex flex-wrap gap-4 mb-6">
+                                    <button
+                                        onClick={pairDevice}
+                                        className="rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 px-6 py-2.5 text-sm font-bold text-white transition hover:brightness-110 active:scale-95 shadow-[0_0_15px_rgba(6,182,212,0.3)]"
+                                    >
+                                        I've Flashed the Hardware
+                                    </button>
+                                    <button
+                                        onClick={() => simulateDevice(selectedDeviceType)}
+                                        className="rounded-xl bg-white/5 border border-white/10 px-6 py-2.5 text-sm font-semibold text-slate-300 transition hover:bg-white/10 active:scale-95"
+                                    >
+                                        Quick Simulate Instead
+                                    </button>
+                                </div>
 
                                 <div className="bg-black/40 p-5 rounded-2xl border border-white/5 text-xs text-slate-300 font-mono overflow-x-auto whitespace-pre leading-relaxed">
 {`#include <WiFi.h>
@@ -291,7 +320,7 @@ export default function App() {
 #define USER_EMAIL "${viewer.email}"
 #define USER_PASSWORD "YOUR_ACCOUNT_PASSWORD"
 #define USER_UID "${viewer.uid}"
-#define DEVICE_KEY "${selectedDeviceType}_device_1"
+#define DEVICE_KEY "${pendingDeviceKey}"
 #define RELAY_PIN 14
 
 FirebaseData fbdo;
