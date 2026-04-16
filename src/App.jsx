@@ -278,7 +278,10 @@ export default function App() {
 
                                 <div className="bg-black/40 p-5 rounded-2xl border border-white/5 text-xs text-slate-300 font-mono overflow-x-auto whitespace-pre leading-relaxed">
 {`#include <WiFi.h>
-#include <FirebaseESP32.h>
+#include <Firebase_ESP_Client.h>
+
+// Provide the token generation process info.
+#include <addons/TokenHelper.h>
 
 #define WIFI_SSID "YOUR_WIFI_NAME"
 #define WIFI_PASSWORD "YOUR_WIFI_PASSWORD"
@@ -291,7 +294,7 @@ export default function App() {
 #define DEVICE_KEY "${selectedDeviceType}_device_1"
 #define RELAY_PIN 14
 
-FirebaseData firebaseData;
+FirebaseData fbdo;
 FirebaseAuth auth;
 FirebaseConfig config;
 
@@ -315,29 +318,33 @@ void setup() {
   auth.user.email = USER_EMAIL;
   auth.user.password = USER_PASSWORD;
 
-  Serial.println("Initializing Firebase...");
+  // Assign the callback function for the long running token generation task
+  config.token_status_callback = tokenStatusCallback;
+
   Firebase.begin(&config, &auth);
   Firebase.reconnectWiFi(true);
 
   String path = String("/users/") + USER_UID + "/devices/" + DEVICE_KEY + "/state";
   
   Serial.println("Starting stream at: " + path);
-  if (!Firebase.beginStream(firebaseData, path)) {
-    Serial.println("Stream begin failed: " + firebaseData.errorReason());
+  if (!Firebase.RTDB.beginStream(&fbdo, path)) {
+    Serial.println("Stream begin failed: " + fbdo.errorReason());
   }
 }
 
 void loop() {
   if (Firebase.ready()) {
-    if (Firebase.readStream(firebaseData)) {
-      if (firebaseData.streamAvailable()) {
-        int state = firebaseData.intData();
-        Serial.print("Update received! New state: ");
-        Serial.println(state);
-        digitalWrite(RELAY_PIN, state == 1 ? HIGH : LOW);
+    if (Firebase.RTDB.readStream(&fbdo)) {
+      if (fbdo.streamAvailable()) {
+        if (fbdo.dataType() == "int") {
+            int state = fbdo.intData();
+            Serial.print("Update received! New state: ");
+            Serial.println(state);
+            digitalWrite(RELAY_PIN, state == 1 ? HIGH : LOW);
+        }
       }
     } else {
-      Serial.println("Stream error: " + firebaseData.errorReason());
+      Serial.println("Stream error: " + fbdo.errorReason());
     }
   }
 }`}
