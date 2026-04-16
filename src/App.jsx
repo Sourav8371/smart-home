@@ -285,6 +285,8 @@ export default function App() {
 
 #define API_KEY "${firebaseConfig.apiKey}"
 #define DATABASE_URL "${firebaseConfig.databaseURL}"
+#define USER_EMAIL "${viewer.email}"
+#define USER_PASSWORD "YOUR_ACCOUNT_PASSWORD"
 #define USER_UID "${viewer.uid}"
 #define DEVICE_KEY "${selectedDeviceType}_device_1"
 #define RELAY_PIN 14
@@ -296,24 +298,47 @@ FirebaseConfig config;
 void setup() {
   Serial.begin(115200);
   pinMode(RELAY_PIN, OUTPUT);
+
+  Serial.println();
+  Serial.print("Connecting to WiFi...");
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  while (WiFi.status() != WL_CONNECTED) delay(300);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println();
+  Serial.print("Connected with IP: ");
+  Serial.println(WiFi.localIP());
 
   config.api_key = API_KEY;
   config.database_url = DATABASE_URL;
-  Firebase.signUp(&config, &auth, "", "");
-  Firebase.begin(&config, &auth);
+  auth.user.email = USER_EMAIL;
+  auth.user.password = USER_PASSWORD;
 
-  String path = String("/users/") + USER_UID
-    + "/devices/" + DEVICE_KEY + "/state";
-  Firebase.beginStream(firebaseData, path);
+  Serial.println("Initializing Firebase...");
+  Firebase.begin(&config, &auth);
+  Firebase.reconnectWiFi(true);
+
+  String path = String("/users/") + USER_UID + "/devices/" + DEVICE_KEY + "/state";
+  
+  Serial.println("Starting stream at: " + path);
+  if (!Firebase.beginStream(firebaseData, path)) {
+    Serial.println("Stream begin failed: " + firebaseData.errorReason());
+  }
 }
 
 void loop() {
-  if (Firebase.readStream(firebaseData)
-      && firebaseData.streamAvailable()) {
-    int state = firebaseData.intData();
-    digitalWrite(RELAY_PIN, state == 1 ? HIGH : LOW);
+  if (Firebase.ready()) {
+    if (Firebase.readStream(firebaseData)) {
+      if (firebaseData.streamAvailable()) {
+        int state = firebaseData.intData();
+        Serial.print("Update received! New state: ");
+        Serial.println(state);
+        digitalWrite(RELAY_PIN, state == 1 ? HIGH : LOW);
+      }
+    } else {
+      Serial.println("Stream error: " + firebaseData.errorReason());
+    }
   }
 }`}
                                 </div>
