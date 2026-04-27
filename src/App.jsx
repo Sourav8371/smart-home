@@ -330,6 +330,7 @@ FirebaseConfig config;
 void setup() {
   Serial.begin(115200);
   pinMode(RELAY_PIN, OUTPUT);
+  digitalWrite(RELAY_PIN, HIGH); // Initialize as HIGH (OFF for active low relay)
 
   Serial.println();
   Serial.print("Connecting to WiFi...");
@@ -369,7 +370,7 @@ void loop() {
             int state = fbdo.intData();
             Serial.print("Update received! New state: ");
             Serial.println(state);
-            digitalWrite(RELAY_PIN, state == 1 ? HIGH : LOW);
+            digitalWrite(RELAY_PIN, state == 1 ? LOW : HIGH); // Active Low: LOW=ON, HIGH=OFF
         }
       }
     } else {
